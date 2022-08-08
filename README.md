@@ -14,7 +14,7 @@ Files:
 - pxe-stub.yml - ansible playbook that sets up a base PXE server using the files in this directory. See pxe-setup flow for more info.
 - README.md - this file.
 
-# flow of pxe-setup.yml
+# flow of pxe-stub.yml
 
 **this is a high-level overview and is not an exhaustive list of what happens; see the yml for more info**. the ansible script will download needed components for the server (dhcp-server, tftp-server) and then syslinux and grub-x64. It copies the relavant files from the latter two packages into /var/lib/tftpboot, the pxe server directory. it writes the template config files to the relevant locations and then opens the firewall to allow the services to be accessible, and starts/restarts and enables the services.
 
@@ -27,7 +27,7 @@ See documentation on main pxe server: [HOWTO: Documentation](https://github.com/
 0. Setup remote PXE server
     - like shown in [fedora-pxe-setup](https://github.com/sjtrotter/fedora-pxe-setup)
     - Ensure networking is set up to where this server is available wherever you are installing this stub from.
-    - Record its IP address for later.
+    - Record its IP address/DNS name for later (the one you can access from the internet).
 1. create VM / Prep Server for Install
     - 2 CPUs
     - 2048 MB / 2 GB RAM
