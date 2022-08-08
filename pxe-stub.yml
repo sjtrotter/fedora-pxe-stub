@@ -6,9 +6,9 @@
     pxe_main_IP: 192.168.1.250
   tasks:
 
-    - name: Install TFTP, HTTP and DHCP
+    - name: Install TFTP and DHCP
       ansible.builtin.dnf:
-        name: tftp-server,dhcp-server,httpd
+        name: tftp-server,dhcp-server
         state: latest
 
     - name: Install Boot Files
