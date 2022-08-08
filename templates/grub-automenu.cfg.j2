@@ -15,8 +15,8 @@ menuentry 'Exit this grub' {
 }
 {% for ks in kickstart.files %}
 menuentry '{{ ks.path.split("/")[-1].split(".")[0].split("-") | join(' ') | title }}' --class fedora --class gnu-linux --class gnu --class os {
-    linuxefi (http,{{ ansible_default_ipv4.address }})/{{ (ks.path | replace('/var/www/html/','')).split('ks')[0] }}images/pxeboot/vmlinuz ip=dhcp inst.repo=http://{{ ansible_default_ipv4.address }}/{{ (ks.path | replace('/var/www/html/','')).split('ks')[0] }} inst.ks=http://{{ansible_default_ipv4.address}}/{{ ks.path | replace('/var/www/html/','') }}
-    initrd (http,{{ ansible_default_ipv4.address }})/{{ (ks.path | replace('/var/www/html/','')).split('ks')[0] }}images/pxeboot/initrd.img
+    linuxefi (http,{{ pxe_main_IP }})/{{ (ks.path | replace('/var/www/html/','')).split('ks')[0] }}images/pxeboot/vmlinuz ip=dhcp inst.repo=http://{{ pxe_main_IP }}/{{ (ks.path | replace('/var/www/html/','')).split('ks')[0] }} inst.ks=http://{{pxe_main_IP}}/{{ ks.path | replace('/var/www/html/','') }}
+    initrd (http,{{ pxe_main_IP }})/{{ (ks.path | replace('/var/www/html/','')).split('ks')[0] }}images/pxeboot/initrd.img
 }
 
 {% endfor %}
