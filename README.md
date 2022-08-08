@@ -60,7 +60,12 @@ See documentation on main pxe server: [HOWTO: Documentation](https://github.com/
     - `sudo dnf install ansible git NetworkManager-tui python3-netaddr wget`
     - `git clone https://github.com/sjtrotter/fedora-pxe-stub.git`
     - Use nmtui to set network information manually. Make sure you set the IP with a /XX for the CIDR, and make sure you set the DNS and Gateway appropriately. ( run `nmtui` )
-    - Edit pxe-stub.yml - `vi fedora-pxe-stub/pxe-stub.yml` and change the variable at the top to the correct IP address. this line: `pxe_main_IP: 192.168.1.250`. While in there, also make sure the version matches the main server version.
+    - Edit pxe-stub.yml
+        - `vi fedora-pxe-stub/pxe-stub.yml`
+        - public IP address/domain name: this line: `pxe_main_IP: 192.168.1.250` - edit to accessible main server IP/domain name.
+        - version: this line: `version: 36` - update if needed to match main server version.
+        - encryption password: this line: `encryption_password: "workstation"` - update between quotes to set the encryption password for clients
+        - creating a user: this line: `user_string: "#user --groups=wheel --name=user --password=\"workstation\" --gecos=user"` - remove the '#' and edit as required to create a default user.
     - `sudo ansible-playbook fedora-pxe-stub/pxe-stub.yml` (make sure you use the path into the git clone, if you have cd'd elsewhere)
 6. Done.
     Once the ansible playbook completes successfully, the server is ready to PXE boot devices - as long as the remote server is set up.
