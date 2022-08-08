@@ -63,9 +63,9 @@
         dest: "{{ item.dest }}"
       with_items:
         - { src: ./templates/dhcpd.conf.j2, dest: /etc/dhcp/dhcpd.conf }
-        - { src: /tmp/ks/basic-workstation.ks.j2, dest: "/var/www/html/f{{ version }}-inst.local/ks/fedora-{{ version }}-basic-workstation.ks" }
-        - { src: /tmp/ks/manual-install.ks.j2, dest: "/var/www/html/f{{ version }}-inst.local/ks/fedora-{{ version }}-manual-install.ks" }
-        - { src: /tmp/ks/virtual-workstation.ks.j2, dest: "/var/www/html/f{{ version }}-inst.local/ks/fedora-{{ version }}-virtual-workstation.ks" }
+        - { src: "/tmp/ks/fedora-{{ version }}-basic-workstation.ks.j2", dest: "/var/www/html/f{{ version }}-inst.local/ks/fedora-{{ version }}-basic-workstation.ks" }
+        - { src: "/tmp/ks/fedora-{{ version }}-manual-install.ks.j2", dest: "/var/www/html/f{{ version }}-inst.local/ks/fedora-{{ version }}-manual-install.ks" }
+        - { src: "/tmp/ks/fedora-{{ version }}-virtual-workstation.ks.j2", dest: "/var/www/html/f{{ version }}-inst.local/ks/fedora-{{ version }}-virtual-workstation.ks" }
 
     - name: Get Kickstart File Listing
       ansible.builtin.find:
