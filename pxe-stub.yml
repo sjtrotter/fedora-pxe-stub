@@ -2,7 +2,8 @@
   hosts: localhost
   become: true
   vars:
-    remote_pxe: 192.168.1.250
+    version: 36
+    pxe_main_IP: 192.168.1.250
   tasks:
 
     - name: Install TFTP, HTTP and DHCP
@@ -23,10 +24,7 @@
       with_items:
         - /var/lib/tftpboot/bios/pxelinux.cfg
         - /var/lib/tftpboot/uefi
-        - /var/www/html/f{{ version }}-inst.local/images/pxeboot
         - /var/www/html/f{{ version }}-inst.local/ks
-        - /var/www/html/f{{ version }}-inst.local/plays
-        - /var/www/html/f{{ version }}-inst.local/other
         
     - name: Copy Required Files
       ansible.builtin.copy:
@@ -42,25 +40,6 @@
         - { src: /opt/syslinux/usr/share/syslinux/lpxelinux.0, dest: /var/lib/tftpboot/bios/lpxelinux.0 }
         - { src: /opt/syslinux/boot/efi/EFI/fedora/shimx64.efi, dest: /var/lib/tftpboot/uefi/shimx64.efi }
         - { src: /opt/syslinux/boot/efi/EFI/fedora/grubx64.efi, dest: /var/lib/tftpboot/uefi/grubx64.efi }
-        # - { src: ./plays/workstation-post.yml, dest: "/var/www/html/f{{ version }}-inst.local/plays/workstation-post.yml" }
-        # - { src: ./plays/virtual-post.yml, dest: "/var/www/html/f{{ version }}-inst.local/plays/virtual-post.yml" }
-        - { src: ./plays, dest: "/var/www/html/f{{ version }}-inst.local/" }
-        # - { src: ./other/networkminer.png, dest: "/var/www/html/f{{ version }}-inst.local/other/networkminer.png" }
-        # - { src: ./other/settings.tar.gz, dest: "/var/www/html/f{{ version }}-inst.local/other/settings.tar.gz" }
-        # - { src: ./other/wallpapers, dest: "/var/www/html/f{{ version }}-inst.local/" }
-        # - { src: ./other/vncuseradd/vncuseradd, dest: "/var/www/html/f{{ version }}-inst.local/other/" }
-        - { src: ./other, dest: "/var/www/html/f{{ version }}-inst.local/" }
-      
-    - name: Download Required Install Files
-      ansible.builtin.get_url:
-        url: "{{ item.src }}"
-        dest: "{{ item.dest }}"
-      with_items:
-        - { src: "https://download.fedoraproject.org/pub/fedora/linux/releases/{{ version }}/Everything/x86_64/os/images/pxeboot/vmlinuz", dest: "/var/www/html/f{{ version }}-inst.local/images/pxeboot/vmlinuz" }
-        - { src: "https://download.fedoraproject.org/pub/fedora/linux/releases/{{ version }}/Everything/x86_64/os/images/pxeboot/initrd.img", dest: "/var/www/html/f{{ version }}-inst.local/images/pxeboot/initrd.img" }
-        - { src: "https://download.fedoraproject.org/pub/fedora/linux/releases/{{ version }}/Everything/x86_64/os/images/install.img", dest: "/var/www/html/f{{ version }}-inst.local/images/install.img" }
-        - { src: "https://download.fedoraproject.org/pub/fedora/linux/releases/{{ version }}/Everything/x86_64/os/.treeinfo", dest: "/var/www/html/f{{ version }}-inst.local/.treeinfo" }
-        - { src: "https://download.fedoraproject.org/pub/fedora/linux/releases/{{ version }}/Everything/x86_64/os/.discinfo", dest: "/var/www/html/f{{ version }}-inst.local/.discinfo" }
 
     - name: Get nmconnection Filename
       ansible.builtin.find:
@@ -78,9 +57,10 @@
         dest: "{{ item.dest }}"
       with_items:
         - { src: ./templates/dhcpd.conf.j2, dest: /etc/dhcp/dhcpd.conf }
-        - { src: ./templates/kickstarts/basic-workstation.ks.j2, dest: "/var/www/html/f{{ version }}-inst.local/ks/fedora-{{ version }}-basic-workstation.ks" }
-        - { src: ./templates/kickstarts/manual-install.ks.j2, dest: "/var/www/html/f{{ version }}-inst.local/ks/fedora-{{ version }}-manual-install.ks" }
-        - { src: ./templates/kickstarts/virtual-workstation.ks.j2, dest: "/var/www/html/f{{ version }}-inst.local/ks/fedora-{{ version }}-virtual-workstation.ks" }
+
+    - name: Get Kickstarts so we can Create Listing
+      ansible.builtin.shell:
+        cmd: wget -r -np -nH --cut-dirs=1 -R "index.html*" http://{{ pxe_main_IP }}/f{{ version }}-inst.local/ks/ -P /var/www/html/f{{ version }}-inst.local
 
     - name: Get Kickstart File Listing
       ansible.builtin.find:

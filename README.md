@@ -57,7 +57,7 @@ See documentation on main pxe server: [HOWTO: Documentation](https://github.com/
 5. First Boot
     - `sudo dnf update`
     - reboot if new kernel installed (it probably was)
-    - `sudo dnf install ansible git NetworkManager-tui python3-netaddr`
+    - `sudo dnf install ansible git NetworkManager-tui python3-netaddr wget`
     - `git clone https://github.com/sjtrotter/fedora-pxe-stub.git`
     - Use nmtui to set network information manually. Make sure you set the IP with a /XX for the CIDR, and make sure you set the DNS and Gateway appropriately. ( run `nmtui` )
     - Edit pxe-stub.yml - `vi fedora-pxe-stub/pxe-stub.yml` and change the variable at the top to the correct IP address. this line: `pxe_main_IP: 192.168.1.250`
