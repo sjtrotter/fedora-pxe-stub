@@ -5,6 +5,7 @@
     version: 36
     pxe_main_IP: 192.168.1.250
     encryption_password: "workstation"
+    user_string: "#user --groups=wheel --name=user --password=\"workstation\" --gecos=user"
   tasks:
 
     - name: Install TFTP and DHCP
