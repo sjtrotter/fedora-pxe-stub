@@ -67,6 +67,11 @@
         - { src: "/tmp/ks/fedora-{{ version }}-manual-install.ks.j2", dest: "/var/www/html/f{{ version }}-inst.local/ks/fedora-{{ version }}-manual-install.ks" }
         - { src: "/tmp/ks/fedora-{{ version }}-virtual-workstation.ks.j2", dest: "/var/www/html/f{{ version }}-inst.local/ks/fedora-{{ version }}-virtual-workstation.ks" }
 
+    - name: Remove Earlier Versions Repo
+      ansible.builtin.file:
+        path: "/var/www/html/f{{ version - 2 | int }}-inst.local"
+        state: absent
+
     - name: Get Kickstart File Listing
       ansible.builtin.find:
         path: /var/www/html
@@ -74,11 +79,6 @@
         file_type: file
         recurse: yes
       register: kickstart
-
-    - name: Remove Earlier Versions Repo
-      ansible.builtin.file:
-        path: "/var/www/html/f{{ version - 2 | int }}-inst.local"
-        state: absent
 
     - name: Write Automatic Menu Templates
       ansible.builtin.template:
