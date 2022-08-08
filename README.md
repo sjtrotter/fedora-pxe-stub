@@ -3,7 +3,7 @@ Setup repository for a stub Fedora PXE server.
 
 Loosely based on [Fedora PXE Setup](https://docs.fedoraproject.org/en-US/fedora/latest/install-guide/advanced/Network_based_Installations/#pxe-overview).
 
-this is a companion "slave" server that can be used with the main fedora-pxe-setup repo, https://github.com/sjtrotter/fedora-pxe-setup which is a full pxe server installation.
+this is a companion "slave" server that can be used with the main fedora-pxe-main repo, https://github.com/sjtrotter/fedora-pxe-main which is a stub http server with files needed to install from.
 
 Files: 
 - default-automenu - BIOS menu configuration - automatically generated from the kickstarts available on the remote server.
@@ -25,9 +25,9 @@ See documentation on main pxe server: [HOWTO: Documentation](https://github.com/
 
 ## howto: Setup from-scratch Stub PXE Server
 0. Setup remote PXE server
-    - like shown in [fedora-pxe-setup](https://github.com/sjtrotter/fedora-pxe-setup)
+    - like shown in [fedora-pxe-main](https://github.com/sjtrotter/fedora-pxe-main)
     - Ensure networking is set up to where this server is available wherever you are installing this stub from.
-    - Record its IP address/DNS name for later (the one you can access from the internet).
+    - Record its IP address/DNS name for later (the one you can access from the internet, unless the server is local).
 1. create VM / Prep Server for Install
     - 2 CPUs
     - 2048 MB / 2 GB RAM
