@@ -92,7 +92,6 @@
       with_items:
         - dhcp
         - tftp
-        - http
 
     - name: Enable and Start Services
       ansible.builtin.systemd:
@@ -102,7 +101,6 @@
       with_items:
         - { name: dhcpd, state: restarted }
         - { name: tftp.socket, state: started }
-        - { name: httpd, state: started }
 
     - name: Write Local Install Repo File
       ansible.builtin.copy:
