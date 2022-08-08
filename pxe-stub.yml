@@ -4,11 +4,12 @@
   vars:
     version: 36
     pxe_main_IP: 192.168.1.250
+    encryption_password: "workstation"
   tasks:
 
     - name: Install TFTP and DHCP
       ansible.builtin.dnf:
-        name: tftp-server,dhcp-server
+        name: tftp-server,dhcp-server,httpd
         state: latest
 
     - name: Install Boot Files
@@ -25,7 +26,12 @@
         - /var/lib/tftpboot/bios/pxelinux.cfg
         - /var/lib/tftpboot/uefi
         - /var/www/html/f{{ version }}-inst.local/ks
-        
+        - ./ks
+
+    - name: Get Kickstarts so we can Create Listing
+      ansible.builtin.shell:
+        cmd: wget -r -np -nH --cut-dirs=1 -R "index.html*" http://{{ pxe_main_IP }}/f{{ version }}-inst.local/ks/ -P ./ks
+
     - name: Copy Required Files
       ansible.builtin.copy:
         src: "{{ item.src }}"
@@ -57,10 +63,9 @@
         dest: "{{ item.dest }}"
       with_items:
         - { src: ./templates/dhcpd.conf.j2, dest: /etc/dhcp/dhcpd.conf }
-
-    - name: Get Kickstarts so we can Create Listing
-      ansible.builtin.shell:
-        cmd: wget -r -np -nH --cut-dirs=1 -R "index.html*" http://{{ pxe_main_IP }}/f{{ version }}-inst.local/ks/ -P /var/www/html/f{{ version }}-inst.local
+        - { src: ./ks/basic-workstation.ks.j2, dest: "/var/www/html/f{{ version }}-inst.local/ks/fedora-{{ version }}-basic-workstation.ks" }
+        - { src: ./ks/manual-install.ks.j2, dest: "/var/www/html/f{{ version }}-inst.local/ks/fedora-{{ version }}-manual-install.ks" }
+        - { src: ./ks/virtual-workstation.ks.j2, dest: "/var/www/html/f{{ version }}-inst.local/ks/fedora-{{ version }}-virtual-workstation.ks" }
 
     - name: Get Kickstart File Listing
       ansible.builtin.find:
@@ -92,6 +97,7 @@
       with_items:
         - dhcp
         - tftp
+        - http
 
     - name: Enable and Start Services
       ansible.builtin.systemd:
@@ -101,3 +107,4 @@
       with_items:
         - { name: dhcpd, state: restarted }
         - { name: tftp.socket, state: started }
+        - { name: httpd, state: started }
