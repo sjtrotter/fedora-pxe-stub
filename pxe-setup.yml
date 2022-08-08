@@ -1,0 +1,140 @@
+- name: Install PXE Components
+  hosts: localhost
+  become: true
+  vars:
+    version: 36
+  tasks:
+
+    - name: Install TFTP, HTTP and DHCP
+      ansible.builtin.dnf:
+        name: tftp-server,dhcp-server,httpd
+        state: latest
+
+    - name: Install Boot Files
+      ansible.builtin.dnf:
+        name: syslinux,shim-x64,grub2-efi-x64
+        installroot: /opt/syslinux
+        state: present
+
+    - name: Set Up Required Directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+      with_items:
+        - /var/lib/tftpboot/bios/pxelinux.cfg
+        - /var/lib/tftpboot/uefi
+        - /var/www/html/f{{ version }}-inst.local/images/pxeboot
+        - /var/www/html/f{{ version }}-inst.local/ks
+        - /var/www/html/f{{ version }}-inst.local/plays
+        - /var/www/html/f{{ version }}-inst.local/other
+        
+    - name: Copy Required Files
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+      with_items:
+        - { src: /opt/syslinux/usr/share/syslinux/pxelinux.0, dest: /var/lib/tftpboot/bios/pxelinux.0 }
+        - { src: /opt/syslinux/usr/share/syslinux/menu.c32, dest: /var/lib/tftpboot/bios/menu.c32 }
+        - { src: /opt/syslinux/usr/share/syslinux/vesamenu.c32, dest: /var/lib/tftpboot/bios/vesamenu.c32 }
+        - { src: /opt/syslinux/usr/share/syslinux/ldlinux.c32, dest: /var/lib/tftpboot/bios/ldlinux.c32 }
+        - { src: /opt/syslinux/usr/share/syslinux/libcom32.c32, dest: /var/lib/tftpboot/bios/libcom32.c32 }
+        - { src: /opt/syslinux/usr/share/syslinux/libutil.c32, dest: /var/lib/tftpboot/bios/libutil.c32 }
+        - { src: /opt/syslinux/usr/share/syslinux/lpxelinux.0, dest: /var/lib/tftpboot/bios/lpxelinux.0 }
+        - { src: /opt/syslinux/boot/efi/EFI/fedora/shimx64.efi, dest: /var/lib/tftpboot/uefi/shimx64.efi }
+        - { src: /opt/syslinux/boot/efi/EFI/fedora/grubx64.efi, dest: /var/lib/tftpboot/uefi/grubx64.efi }
+        # - { src: ./plays/workstation-post.yml, dest: "/var/www/html/f{{ version }}-inst.local/plays/workstation-post.yml" }
+        # - { src: ./plays/virtual-post.yml, dest: "/var/www/html/f{{ version }}-inst.local/plays/virtual-post.yml" }
+        - { src: ./plays, dest: "/var/www/html/f{{ version }}-inst.local/" }
+        # - { src: ./other/networkminer.png, dest: "/var/www/html/f{{ version }}-inst.local/other/networkminer.png" }
+        # - { src: ./other/settings.tar.gz, dest: "/var/www/html/f{{ version }}-inst.local/other/settings.tar.gz" }
+        # - { src: ./other/wallpapers, dest: "/var/www/html/f{{ version }}-inst.local/" }
+        # - { src: ./other/vncuseradd/vncuseradd, dest: "/var/www/html/f{{ version }}-inst.local/other/" }
+        - { src: ./other, dest: "/var/www/html/f{{ version }}-inst.local/" }
+      
+    - name: Download Required Install Files
+      ansible.builtin.get_url:
+        url: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+      with_items:
+        - { src: "https://download.fedoraproject.org/pub/fedora/linux/releases/{{ version }}/Everything/x86_64/os/images/pxeboot/vmlinuz", dest: "/var/www/html/f{{ version }}-inst.local/images/pxeboot/vmlinuz" }
+        - { src: "https://download.fedoraproject.org/pub/fedora/linux/releases/{{ version }}/Everything/x86_64/os/images/pxeboot/initrd.img", dest: "/var/www/html/f{{ version }}-inst.local/images/pxeboot/initrd.img" }
+        - { src: "https://download.fedoraproject.org/pub/fedora/linux/releases/{{ version }}/Everything/x86_64/os/images/install.img", dest: "/var/www/html/f{{ version }}-inst.local/images/install.img" }
+        - { src: "https://download.fedoraproject.org/pub/fedora/linux/releases/{{ version }}/Everything/x86_64/os/.treeinfo", dest: "/var/www/html/f{{ version }}-inst.local/.treeinfo" }
+        - { src: "https://download.fedoraproject.org/pub/fedora/linux/releases/{{ version }}/Everything/x86_64/os/.discinfo", dest: "/var/www/html/f{{ version }}-inst.local/.discinfo" }
+
+    - name: Get nmconnection Filename
+      ansible.builtin.find:
+        path: /etc/NetworkManager/system-connections/
+        pattern: "*.nmconnection"
+      register: nm_conn
+
+    - name: Get DNS Server from nmconnection File
+      ansible.builtin.set_fact:
+        DNS_Server: "{{ lookup('file', nm_conn.files[0].path) | regex_findall('\\s*dns\\s*(.*)') }}"
+
+    - name: Copy Template Files
+      ansible.builtin.template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+      with_items:
+        - { src: ./templates/dhcpd.conf.j2, dest: /etc/dhcp/dhcpd.conf }
+        - { src: ./templates/kickstarts/basic-workstation.ks.j2, dest: "/var/www/html/f{{ version }}-inst.local/ks/fedora-{{ version }}-basic-workstation.ks" }
+        - { src: ./templates/kickstarts/manual-install.ks.j2, dest: "/var/www/html/f{{ version }}-inst.local/ks/fedora-{{ version }}-manual-install.ks" }
+        - { src: ./templates/kickstarts/virtual-workstation.ks.j2, dest: "/var/www/html/f{{ version }}-inst.local/ks/fedora-{{ version }}-virtual-workstation.ks" }
+
+    - name: Get Kickstart File Listing
+      ansible.builtin.find:
+        path: /var/www/html
+        pattern: "*.ks"
+        file_type: file
+        recurse: yes
+      register: kickstart
+
+    - name: Remove Earlier Versions Repo
+      ansible.builtin.file:
+        path: "/var/www/html/f{{ version - 2 | int }}-inst.local"
+        state: absent
+
+    - name: Write Automatic Menu Templates
+      ansible.builtin.template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+      with_items:
+        - { src: ./templates/default-automenu.j2, dest: /var/lib/tftpboot/bios/pxelinux.cfg/default }
+        - { src: ./templates/grub-automenu.cfg.j2, dest: /var/lib/tftpboot/uefi/grub.cfg }
+        
+    - name: Open Required Ports in Firewall
+      ansible.builtin.firewalld:
+        service: "{{ item }}"
+        state: enabled
+        permanent: yes
+        immediate: yes
+      with_items:
+        - dhcp
+        - tftp
+        - http
+
+    - name: Enable and Start Services
+      ansible.builtin.systemd:
+        name: "{{ item.name }}"
+        state: "{{ item.state }}"
+        enabled: yes
+      with_items:
+        - { name: dhcpd, state: restarted }
+        - { name: tftp.socket, state: started }
+        - { name: httpd, state: started }
+
+    - name: Write Local Install Repo File
+      ansible.builtin.copy:
+        dest: "/etc/yum.repos.d/f{{ version }}-inst.local.repo"
+        content: |
+          [f{{ version }}-inst.local]
+          name=Fedora {{ version }} Local Install Repo
+          baseurl=https://download.fedoraproject.org/pub/fedora/linux/releases/{{ version }}/Everything/x86_64/os/
+          enabled=1
+          gpgcheck=0
+
+    - name: Sync Local Install Repo (this will take A WHILE)
+      ansible.builtin.shell:
+        cmd: "dnf reposync -a noarch -a x86_64 --delete --download-metadata --download-path /var/www/html/ --repoid f{{ version }}-inst.local"
+  

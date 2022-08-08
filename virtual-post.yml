@@ -1,0 +1,206 @@
+- name: Post Install for Virtual Workstation
+  hosts: localhost
+  become: true
+  tasks:
+
+    - name: Download Installer Files
+      ansible.builtin.get_url:
+        url: "{{ item.url }}"
+        dest: "{{ item.dest }}"
+      with_items:
+        - { url: https://www.netresec.com/?download=NetworkMiner, dest: /tmp/nm.zip }
+        # - { url: https://download3.vmware.com/software/CART23FQ2_LIN64_2206/VMware-Horizon-Client-2206-8.6.0-20094634.x64.bundle, dest: '.' }
+        - { url: https://dl.dod.cyber.mil/wp-content/uploads/pki-pke/zip/unclass-certificates_pkcs7_v5-6_dod.zip, dest: '.' }
+        - { url: https://installers.privateinternetaccess.com/download/pia-linux-3.3.1-06924.run, dest: '.' }
+
+    - name: Extract Required Files
+      ansible.builtin.unarchive:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+      with_items:
+        - { src: /tmp/nm.zip, dest: /opt }
+        - { src: unclass-certificates_pkcs7_v5-6_dod.zip, dest: '.' }
+        - { src: settings.tar.gz, dest: '/' }
+
+    - name: Get NM and Wallpaper Paths
+      ansible.builtin.find:
+        pattern: "{{ item.pattern }}"
+        path: "{{ item.path }}"
+        recurse: "{{ item.recurse }}"
+        file_type: "{{ item.type }}"
+      register: paths
+      with_items:
+        - { pattern: "NetworkMiner*", path: "/opt", recurse: no, type: directory }
+        - { pattern: "*", path: "/usr/share/backgrounds/wallpapers", recurse: yes, type: file }
+
+    - name: Run Ad-Hoc Commands - Import RPM Repo Keys
+      ansible.builtin.shell:
+        cmd: "{{ item }}"
+      with_items:
+        - rpm --import https://forensics.cert.org/forensics.asc
+        - rpm --import https://www.cert.org/forensics/repository/forensics-expires-2022-04-03.asc
+
+    - name: Set Content and Files Variables
+      vars:
+        nm_path: "{{ paths.results[0].files[0].path }}"
+      ansible.builtin.set_fact:
+        nm_path: "{{ paths.results[0].files[0].path }}"
+        wallpapers: "{{ paths.results[1] }}"
+        nm_desktop_file: |
+          [Desktop Entry]
+          Type=Application
+          Name=Network Miner
+          Exec=mono {{ nm_path }}/NetworkMiner.exe --noupdatecheck
+          Icon={{ nm_path }}/networkminer.png
+          Categories=Application;Network;Monitor;
+        vscode_repo: |
+          [code]
+          name=Visual Studio Code
+          baseurl=https://packages.microsoft.com/yumrepos/vscode
+          enabled=0
+          gpgcheck=1
+          gpgkey=https://packages.microsoft.com/keys/microsoft.asc
+        pia_install_wrapper: |
+          expect -c 'spawn bash /tmp/pia-linux-3.3.1-06924.run; expect "Password:"; send "testpass\n"; interact'
+        shell_extensions: |
+          [org/gnome/shell]
+          enabled-extensions=['apps-menu@gnome-shell-extensions.gcampax.github.com','caffeine@patapon.info','no-overview@fthx','places-menu@gnome-shell-extensions.gcampax.github.com','window-list@gnome-shell-extensions.gcampax.github.com']
+        user_favorites: |
+          [org/gnome/shell]
+          favorite-apps = ['gnome-terminal.desktop','nautilus.desktop','firefox.desktop','google-chrome.desktop','autopsy.desktop','code.desktop','org.gnome.TextEditor.desktop','putty.desktop','NetworkMiner.desktop','org.wireshark.Wireshark.desktop','brim.desktop','org.remmina.Remmina.desktop','piavpn.desktop','org.gnome.tweaks.desktop','org.gnome.Settings.desktop']
+        # removed 'pidgin.desktop','com.yubico.yubioath.desktop','org.remmina.Remmina.desktop','vmware-view.desktop'
+        user_background: |
+          [org/gnome/desktop/background]
+          picture-uri='file:///usr/share/backgrounds/wallpapers/low-poly-raven.png'
+          picture-uri-dark='file:///usr/share/backgrounds/wallpapers/low-poly-raven.png'
+          picture-options='zoom'
+          primary-color='000000'
+          secondary-color='FFFFFF'
+          show-desktop-icons="true"
+        window_buttons: |
+          [org/gnome/desktop/wm/preferences]
+          button-layout='appmenu:minimize,maximize,close'
+        dark_mode: |
+          [org/gnome/desktop/interface]
+          color-scheme='prefer-dark'
+          gtk-theme='Adwaita-dark'
+    #     powershell_repo: |
+    #       [powershell]
+    #       name=PowerShell
+    #       baseurl=https://packages.microsoft.com/rhel/8/prod
+    #       enabled=0
+    #       gpgcheck=1
+    #       gpgkey=https://packages.microsoft.com/keys/microsoft.asc          
+
+    - name: chmod NetworkMiner Files, Add Dir for vncuseradd man page
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        mode: "{{ item.mode }}"
+        state: "{{ item.state }}"
+        recurse: "{{ item.recurse }}"
+      with_items: 
+        - { mode: "+x", state: file, recurse: no, path: "{{ nm_path }}/NetworkMiner.exe" }
+        - { mode: "go+w", state: directory, recurse: yes, path: "{{ nm_path }}/AssembledFiles" }
+        - { mode: "go+w", state: directory, recurse: yes, path: "{{ nm_path }}/Captures" }
+        - { mode: "", state: directory, recurse: no, path: /usr/local/man/man8 }
+
+    - name: Place Prebuilt Files
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: "{{ item.mode }}"
+      with_items:
+        - { src: networkminer.png, dest: "{{ nm_path }}/networkminer.png", mode: "0644" }
+        - { src: ./vncuseradd/vncuseradd, dest: "/usr/local/bin/vncuseradd", mode: "0755" }
+        - { src: ./vncuseradd/vncuseradd.8.gz, dest: "/usr/local/man/man8/vncuseradd.8.gz", mode: "0755" }
+
+    - name: Write Configuration Files
+      ansible.builtin.copy:
+        dest: "{{ item.dest }}"
+        content: "{{ item.content }}"
+      with_items:
+        - { dest: /usr/share/applications/NetworkMiner.desktop, content: "{{ nm_desktop_file }}" }
+        - { dest: /etc/yum.repos.d/vscode.repo, content: "{{ vscode_repo }}" }
+        - { dest: 'test.sh', content: "{{ pia_install_wrapper }}" }
+        - { dest: /etc/dconf/db/local.d/00-extensions, content: "{{ shell_extensions }}" }
+        - { dest: /etc/dconf/db/local.d/00-favorite-apps, content: "{{ user_favorites }}" }
+        - { dest: /etc/dconf/db/local.d/00-background, content: "{{ user_background }}" }
+        - { dest: /etc/dconf/db/local.d/00-windowbuttons, content: "{{ window_buttons }}" }
+        - { dest: /etc/dconf/db/local.d/00-darkmode, content: "{{ dark_mode }}" }
+        # - { dest: /etc/yum.repos.d/microsoft.repo, content: "{{ powershell_repo }}" }
+
+    - name: Template Wallpaper XML
+      ansible.builtin.copy:
+        dest: "/usr/share/gnome-background-properties/{{ item.path.split('/')[-1].split('.')[0] }}.xml"
+        content: |
+          <?xml version="1.0"?>
+          <!DOCTYPE wallpapers SYSTEM "gnome-wp-list.dtd">
+          <wallpapers>
+            <wallpaper deleted='false'>
+              <name>{{ item.path.split('/')[-1].split(".")[0].split('-') | title }}</name>
+              <filename>/usr/share/backgrounds/wallpapers/{{ item.path.split('/')[-1] }}</filename>
+              <filename-dark>/usr/share/backgrounds/wallpapers/{{ item.path.split('/')[-1] }}</filename-dark>
+              <options>zoom</options>
+              <shade_type>solid</shade_type>
+              <pcolor>#000000</pcolor>
+              <scolor>#FFFFFF</scolor>
+            </wallpaper>
+          </wallpapers>
+      loop:
+        "{{ wallpapers.files }}"
+
+    - name: Update (except kernel), Install Tweaks and Tools, Remove Chrome Config
+      ansible.builtin.dnf:
+        name: "{{ item.name }}"
+        state: "{{ item.state }}"
+        exclude: "{{ item.exclude }}"
+        enablerepo: "{{ item.enablerepo }}"
+        autoremove: "{{ item.autoremove }}"
+      with_items:
+        - { name: "*", state: "latest", exclude: "kernel-core,kernel-modules", enablerepo: "", autoremove: no }
+        - { name: "gnome-extensions-app,gnome-tweaks,gnome-shell-extension-frippery-applications-menu,gnome-shell-extension-apps-menu,gnome-shell-extension-caffeine,gnome-shell-extension-no-overview,gnome-shell-extension-window-list,gnome-shell-extension-dash-to-dock,https://forensics.cert.org/cert-forensics-tools-release-36.rpm,fedora-workstation-repositories", state: "latest", exclude: "", enablerepo: "", autoremove: no }
+        - { name: "mono-devel,vim,net-tools,nmap,putty,screen,suricata,tcpdump,tcpreplay,wireshark,yara,google-chrome-stable,code,brim,zeek,autopsy,Volatility,avml,gcc,openssl,expect,remmina,tigervnc-server", state: latest, exclude: "", enablerepo: "google-chrome,code", autoremove: no }  # - powershell #,powershell
+        - { name: "fedora-chromium-config,gnome-boxes", state: "absent", exclude: "", enablerepo: "", autoremove: yes }
+        # removed yubioath-desktop,pidgin,gnome-shell-extension-pidgin,libpurple-devel,libmarkdown-devel,json-glib-devel,glib2,git,opensc
+        # added gnome-boxes to be removed, added tigervnc-server to be installed
+
+    - name: Run Ad-Hoc Commands - Convert/Move/Update CA, Install Horizon, dconf Update, Create PIA User
+      ansible.builtin.shell:
+        cmd: "{{ item }}"
+      with_items:
+        - openssl pkcs7 -in Certificates_PKCS7_v5.6_DoD/Certificates_PKCS7_v5.6_DoD.pem.p7b -print_certs -out DoD_CAs.pem
+        - cp DoD_CAs.pem /etc/pki/ca-trust/source/anchors
+        - update-ca-trust
+        # - printf "no\nno\n" | bash VMware-Horizon-Client-2206-8.6.0-20094634.x64.bundle --console --required --eulas-agreed --stop-services
+        - dconf update
+        - useradd -UG wheel -p $(openssl passwd -6 testpass) testuser
+
+# removed pidgin plugin
+
+# removed horizon/smartcard support
+
+    - name: Install PIA with dummy user
+      become: true
+      become_user: testuser
+      vars:
+        ansible_become_pass: testpass
+      ansible.builtin.shell:
+        cmd: bash /tmp/test.sh
+
+    - name: Post-Install Ad-Hoc Commands - Kill Processes, Delete Dummy User, Update man database
+      ansible.builtin.shell:
+        cmd: "{{ item }}"
+      with_items:
+        - "PIA_PID=$(ps -ef | grep -v grep | grep pia | awk '{print $2}'); if [[ $PIA_PID ]]; then kill -9 $PIA_PID; fi"
+        - "for pid in $(ps -aux | egrep '(^1000|^testuser)' | awk '{print $2}'); do kill -9 $pid; done"
+        - userdel -f testuser
+        - rm -rf /home/testuser /var/spool/mail/testuser
+        - mandb
+
+    - name: Write VNC Config
+      ansible.builtin.blockinfile:
+        path: /etc/tigervnc/vncserver-config-defaults
+        block: |
+          session=gnome
+          geometry=1920x1080
+          SecurityTypes=TLSVnc

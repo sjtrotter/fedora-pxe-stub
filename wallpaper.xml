@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE wallpapers SYSTEM "gnome-wp-list.dtd">
+<wallpapers>
+  <wallpaper>
+    <name>{{ item.strip(".png") }}</name>
+    <filename>/usr/share/backgrounds/{{ item }}</filename>
+    <options>stretch</options>
+    <pcolor>#000000</pcolor>
+    <scolor>#FFFFFF</scolor>
+  </wallpaper>
+</wallpapers>

@@ -1,0 +1,16 @@
+default vesamenu.c32
+prompt 1
+timeout 600
+
+label local
+menu label Boot from ^local drive
+menu default
+localboot 0xffff
+
+{% for ks in kickstart.files %}
+label {{ ks.path.split("/")[-1].split(".")[0] }}
+menu label {{ ks.path.split("/")[-1].split(".")[0].split("-") | join(' ') | title }}
+kernel http://{{ ansible_default_ipv4.address }}/{{ (ks.path | replace('/var/www/html/','')).split('ks')[0] }}images/pxeboot/vmlinuz
+append initrd=http://{{ ansible_default_ipv4.address }}/{{ (ks.path | replace('/var/www/html/','')).split('ks')[0] }}images/pxeboot/initrd.img inst.repo=http://{{ ansible_default_ipv4.address }}/{{ (ks.path | replace('/var/www/html/','')).split('ks')[0] }} ip=dhcp inst.ks=http://{{ ansible_default_ipv4.address }}/{{ ks.path | replace('/var/www/html/','') }}
+
+{% endfor %}
