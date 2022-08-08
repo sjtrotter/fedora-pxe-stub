@@ -101,18 +101,3 @@
       with_items:
         - { name: dhcpd, state: restarted }
         - { name: tftp.socket, state: started }
-
-    - name: Write Local Install Repo File
-      ansible.builtin.copy:
-        dest: "/etc/yum.repos.d/f{{ version }}-inst.local.repo"
-        content: |
-          [f{{ version }}-inst.local]
-          name=Fedora {{ version }} Local Install Repo
-          baseurl=https://download.fedoraproject.org/pub/fedora/linux/releases/{{ version }}/Everything/x86_64/os/
-          enabled=1
-          gpgcheck=0
-
-    - name: Sync Local Install Repo (this will take A WHILE)
-      ansible.builtin.shell:
-        cmd: "dnf reposync -a noarch -a x86_64 --delete --download-metadata --download-path /var/www/html/ --repoid f{{ version }}-inst.local"
-  
